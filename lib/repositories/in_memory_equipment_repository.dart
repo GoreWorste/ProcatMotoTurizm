@@ -36,7 +36,15 @@ class InMemoryEquipmentRepository implements EquipmentRepository {
 
   @override
   Future<PageResult<Equipment>> find(EquipmentQuery query) async {
-    await Future<void>.delayed(const Duration(milliseconds: 250));
+    final searchTrim = query.search.trim();
+    final delay = searchTrim == '__slow_load__'
+        ? const Duration(seconds: 6)
+        : const Duration(milliseconds: 250);
+    await Future<void>.delayed(delay);
+
+    if (searchTrim == '__error__') {
+      throw StateError('Симуляция ошибки загрузки (учебный скриншот)');
+    }
 
     var list = List<Equipment>.from(_items);
 
@@ -45,7 +53,9 @@ class InMemoryEquipmentRepository implements EquipmentRepository {
     }
 
     final search = query.search.trim().toLowerCase();
-    if (search.isNotEmpty) {
+    if (search.isNotEmpty &&
+        search != '__slow_load__' &&
+        search != '__error__') {
       list = list
           .where(
             (e) =>

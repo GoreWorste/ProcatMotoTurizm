@@ -25,6 +25,10 @@ class InMemoryClientRepository implements ClientRepository {
   Future<PageResult<Client>> find(ClientQuery query) async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
 
+    if (query.search.trim() == '__error__') {
+      throw StateError('Симуляция ошибки загрузки (учебный скриншот)');
+    }
+
     var list = List<Client>.from(_items);
 
     if (!query.includeDeleted) {

@@ -1,5 +1,6 @@
 import '../models/client_query.dart';
 import '../models/equipment_query.dart';
+import '../models/named_entity_query.dart';
 
 EquipmentQuery equipmentQueryFromUri(Map<String, String> params) {
   return EquipmentQuery(
@@ -80,4 +81,25 @@ bool _parseSortAscending(String? sort) {
   final parts = sort.split(',');
   if (parts.length < 2) return true;
   return parts[1].toLowerCase() != 'desc';
+}
+
+NamedEntityQuery namedEntityQueryFromUri(Map<String, String> params) {
+  return NamedEntityQuery(
+    search: params['search'] ?? '',
+    sortField: _parseSortField(params['sort'], defaultField: 'name'),
+    sortAscending: _parseSortAscending(params['sort']),
+    page: _parseInt(params['page']) ?? 1,
+    size: _parseInt(params['size']) ?? 10,
+    includeDeleted: params['includeDeleted'] == 'true',
+  );
+}
+
+Map<String, String> namedEntityQueryToParams(NamedEntityQuery query) {
+  final map = <String, String>{};
+  if (query.search.isNotEmpty) map['search'] = query.search;
+  map['sort'] = '${query.sortField},${query.sortAscending ? 'asc' : 'desc'}';
+  map['page'] = '${query.page}';
+  map['size'] = '${query.size}';
+  if (query.includeDeleted) map['includeDeleted'] = 'true';
+  return map;
 }

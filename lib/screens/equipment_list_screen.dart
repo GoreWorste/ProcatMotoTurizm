@@ -1,9 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../models/catalog_data.dart';
+import '../state/catalog_notifier.dart';
 import '../models/equipment.dart';
 import '../models/equipment_query.dart';
 import '../models/load_status.dart';
@@ -24,18 +25,30 @@ class EquipmentListScreen extends StatefulWidget {
 
 class _EquipmentListScreenState extends State<EquipmentListScreen> {
   bool _filtersExpanded = true;
+  String? _appliedUri;
+  bool _skipUriApply = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final parsed =
-        equipmentQueryFromUri(GoRouterState.of(context).uri.queryParameters);
-    final notifier = context.read<EquipmentListNotifier>();
-    if (!_queriesEqual(parsed, notifier.query)) {
-      notifier.applyQuery(parsed);
-    } else if (notifier.status == LoadStatus.idle) {
-      notifier.load();
-    }
+    if (_skipUriApply) return;
+
+    final uriString = GoRouterState.of(context).uri.toString();
+    if (_appliedUri == uriString) return;
+    _appliedUri = uriString;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _skipUriApply) return;
+
+      final parsed =
+          equipmentQueryFromUri(GoRouterState.of(context).uri.queryParameters);
+      final notifier = context.read<EquipmentListNotifier>();
+      if (!_queriesEqual(parsed, notifier.query)) {
+        notifier.applyQuery(parsed);
+      } else if (notifier.status == LoadStatus.idle) {
+        notifier.load();
+      }
+    });
   }
 
   bool _queriesEqual(EquipmentQuery a, EquipmentQuery b) {
@@ -43,39 +56,32 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
         equipmentQueryToParams(b).toString();
   }
 
-  void _syncUrl(EquipmentQuery query) {
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final uri = Uri(
-        path: '/equipment',
-        queryParameters: equipmentQueryToParams(query),
-      );
-      final current = GoRouterState.of(context).uri.toString();
-      if (current != uri.toString()) {
-        context.go(uri.toString());
-      }
-    });
-  }
-
   Future<void> _apply(EquipmentQuery next) async {
+    _skipUriApply = true;
     final notifier = context.read<EquipmentListNotifier>();
     await notifier.applyQuery(next);
-    _syncUrl(notifier.query);
+    final uri = Uri(
+      path: '/equipment',
+      queryParameters: equipmentQueryToParams(notifier.query),
+    );
+    _appliedUri = uri.toString();
+    if (mounted && GoRouterState.of(context).uri.toString() != _appliedUri) {
+      context.go(_appliedUri!);
+    }
+    _skipUriApply = false;
   }
 
   @override
   Widget build(BuildContext context) {
     final notifier = context.watch<EquipmentListNotifier>();
+    final catalog = context.watch<CatalogNotifier>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Оборудование'),
-        actions: [
-          TextButton(
-            onPressed: () => context.go('/clients'),
-            child: const Text('Клиенты'),
-          ),
-        ],
+      appBar: AppBar(title: const Text('Оборудование')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push('/equipment/new'),
+        tooltip: 'Добавить',
+        child: const Icon(Icons.add),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -116,12 +122,17 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                     ),
                   ],
                 ),
-                if (_filtersExpanded) _EquipmentFilters(query: notifier.query, onApply: _apply),
+                if (_filtersExpanded)
+                  _EquipmentFilters(
+                    query: notifier.query,
+                    catalog: catalog,
+                    onApply: _apply,
+                  ),
                 _SelectionBar(notifier: notifier),
               ],
             ),
           ),
-          Expanded(child: _buildBody(notifier)),
+          Expanded(child: _buildBody(notifier, catalog)),
           Padding(
             padding: const EdgeInsets.all(12),
             child: PaginationBar(
@@ -137,7 +148,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     );
   }
 
-  Widget _buildBody(EquipmentListNotifier notifier) {
+  Widget _buildBody(EquipmentListNotifier notifier, CatalogNotifier catalog) {
     switch (notifier.status) {
       case LoadStatus.loading:
       case LoadStatus.idle:
@@ -156,6 +167,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             final useCards = constraints.maxWidth < 600;
             if (useCards) {
               return _EquipmentCardList(
+                catalog: catalog,
                 items: notifier.result.items,
                 selected: notifier.selected,
                 onToggle: notifier.toggleSelection,
@@ -166,7 +178,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
               );
             }
             return EntityTable<Equipment>(
-              columns: _columns,
+              columns: _columns(catalog),
               items: notifier.result.items,
               idOf: (e) => e.id,
               selected: notifier.selected,
@@ -186,7 +198,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     }
   }
 
-  List<TableColumnSpec<Equipment>> get _columns => [
+  List<TableColumnSpec<Equipment>> _columns(CatalogNotifier catalog) => [
         TableColumnSpec(
           label: 'Название',
           sortField: 'name',
@@ -200,7 +212,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
         TableColumnSpec(
           label: 'Категория',
           sortField: 'name',
-          build: (e) => Text(categoryName(e.categoryId)),
+          build: (e) => Text(catalog.categoryName(e.categoryId)),
         ),
         TableColumnSpec(
           label: 'Тариф/сут.',
@@ -270,14 +282,105 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   }
 }
 
-class _EquipmentFilters extends StatelessWidget {
-  const _EquipmentFilters({required this.query, required this.onApply});
+class _EquipmentFilters extends StatefulWidget {
+  const _EquipmentFilters({
+    required this.query,
+    required this.catalog,
+    required this.onApply,
+  });
 
   final EquipmentQuery query;
+  final CatalogNotifier catalog;
   final Future<void> Function(EquipmentQuery) onApply;
 
   @override
+  State<_EquipmentFilters> createState() => _EquipmentFiltersState();
+}
+
+class _EquipmentFiltersState extends State<_EquipmentFilters> {
+  Timer? _debounce;
+  late final TextEditingController _rateFrom;
+  late final TextEditingController _rateTo;
+  late final TextEditingController _yearFrom;
+  late final TextEditingController _yearTo;
+
+  @override
+  void initState() {
+    super.initState();
+    _rateFrom = TextEditingController(text: _text(widget.query.dailyRateFrom));
+    _rateTo = TextEditingController(text: _text(widget.query.dailyRateTo));
+    _yearFrom = TextEditingController(text: _text(widget.query.yearFrom));
+    _yearTo = TextEditingController(text: _text(widget.query.yearTo));
+  }
+
+  @override
+  void didUpdateWidget(covariant _EquipmentFilters oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.query.dailyRateFrom != widget.query.dailyRateFrom) {
+      _syncController(_rateFrom, widget.query.dailyRateFrom);
+    }
+    if (oldWidget.query.dailyRateTo != widget.query.dailyRateTo) {
+      _syncController(_rateTo, widget.query.dailyRateTo);
+    }
+    if (oldWidget.query.yearFrom != widget.query.yearFrom) {
+      _syncController(_yearFrom, widget.query.yearFrom);
+    }
+    if (oldWidget.query.yearTo != widget.query.yearTo) {
+      _syncController(_yearTo, widget.query.yearTo);
+    }
+  }
+
+  String _text(num? value) => value?.toString() ?? '';
+
+  void _syncController(TextEditingController c, num? value) {
+    final next = _text(value);
+    if (c.text != next) c.text = next;
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _rateFrom.dispose();
+    _rateTo.dispose();
+    _yearFrom.dispose();
+    _yearTo.dispose();
+    super.dispose();
+  }
+
+  double? _parseDouble(String raw) {
+    final v = raw.trim();
+    if (v.isEmpty) return null;
+    return double.tryParse(v);
+  }
+
+  int? _parseInt(String raw) {
+    final v = raw.trim();
+    if (v.isEmpty) return null;
+    return int.tryParse(v);
+  }
+
+  EquipmentQuery _queryFromFields() {
+    return widget.query.copyWith(
+      dailyRateFrom: _parseDouble(_rateFrom.text),
+      dailyRateTo: _parseDouble(_rateTo.text),
+      yearFrom: _parseInt(_yearFrom.text),
+      yearTo: _parseInt(_yearTo.text),
+    );
+  }
+
+  void _applyNow() {
+    _debounce?.cancel();
+    widget.onApply(_queryFromFields());
+  }
+
+  void _scheduleApply() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), _applyNow);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final query = widget.query;
     return Wrap(
       spacing: 12,
       runSpacing: 8,
@@ -288,86 +391,78 @@ class _EquipmentFilters extends StatelessWidget {
           value: query.categoryId,
           items: [
             const DropdownMenuItem<int?>(value: null, child: Text('Все категории')),
-            ...equipmentCategories.map(
+            ...widget.catalog.categories.map(
               (c) => DropdownMenuItem<int?>(value: c.id, child: Text(c.name)),
             ),
           ],
-          onChanged: (value) => onApply(query.copyWith(categoryId: value)),
+          onChanged: (value) => widget.onApply(query.copyWith(categoryId: value)),
         ),
         DropdownButton<int?>(
           hint: const Text('Бренд'),
           value: query.brandId,
           items: [
             const DropdownMenuItem<int?>(value: null, child: Text('Все бренды')),
-            ...equipmentBrands.map(
+            ...widget.catalog.brands.map(
               (b) => DropdownMenuItem<int?>(value: b.id, child: Text(b.name)),
             ),
           ],
-          onChanged: (value) => onApply(query.copyWith(brandId: value)),
+          onChanged: (value) => widget.onApply(query.copyWith(brandId: value)),
         ),
         SizedBox(
           width: 120,
-          child: TextFormField(
-            key: ValueKey('rateFrom-${query.dailyRateFrom}'),
-            initialValue: query.dailyRateFrom?.toString() ?? '',
+          child: TextField(
+            controller: _rateFrom,
             decoration: const InputDecoration(
               labelText: 'Тариф от',
               isDense: true,
             ),
             keyboardType: TextInputType.number,
-            onFieldSubmitted: (v) => onApply(
-              query.copyWith(
-                dailyRateFrom: v.isEmpty ? null : double.tryParse(v),
-              ),
-            ),
+            onChanged: (_) => _scheduleApply(),
+            onSubmitted: (_) => _applyNow(),
           ),
         ),
         SizedBox(
           width: 120,
-          child: TextFormField(
-            key: ValueKey('rateTo-${query.dailyRateTo}'),
-            initialValue: query.dailyRateTo?.toString() ?? '',
+          child: TextField(
+            controller: _rateTo,
             decoration: const InputDecoration(
               labelText: 'Тариф до',
               isDense: true,
             ),
             keyboardType: TextInputType.number,
-            onFieldSubmitted: (v) => onApply(
-              query.copyWith(
-                dailyRateTo: v.isEmpty ? null : double.tryParse(v),
-              ),
-            ),
+            onChanged: (_) => _scheduleApply(),
+            onSubmitted: (_) => _applyNow(),
           ),
         ),
         SizedBox(
           width: 100,
-          child: TextFormField(
-            key: ValueKey('yearFrom-${query.yearFrom}'),
-            initialValue: query.yearFrom?.toString() ?? '',
+          child: TextField(
+            controller: _yearFrom,
             decoration: const InputDecoration(
               labelText: 'Год от',
               isDense: true,
             ),
             keyboardType: TextInputType.number,
-            onFieldSubmitted: (v) => onApply(
-              query.copyWith(yearFrom: v.isEmpty ? null : int.tryParse(v)),
-            ),
+            onChanged: (_) => _scheduleApply(),
+            onSubmitted: (_) => _applyNow(),
           ),
         ),
         SizedBox(
           width: 100,
-          child: TextFormField(
-            key: ValueKey('yearTo-${query.yearTo}'),
-            initialValue: query.yearTo?.toString() ?? '',
+          child: TextField(
+            controller: _yearTo,
             decoration: const InputDecoration(
               labelText: 'Год до',
               isDense: true,
             ),
             keyboardType: TextInputType.number,
-            onFieldSubmitted: (v) => onApply(
-              query.copyWith(yearTo: v.isEmpty ? null : int.tryParse(v)),
-            ),
+            onChanged: (_) => _scheduleApply(),
+            onSubmitted: (_) => _applyNow(),
           ),
+        ),
+        FilledButton.tonal(
+          onPressed: _applyNow,
+          child: const Text('Применить'),
         ),
       ],
     );
@@ -430,6 +525,7 @@ class _SelectionBar extends StatelessWidget {
 
 class _EquipmentCardList extends StatelessWidget {
   const _EquipmentCardList({
+    required this.catalog,
     required this.items,
     required this.selected,
     required this.onToggle,
@@ -439,6 +535,7 @@ class _EquipmentCardList extends StatelessWidget {
     required this.onRestore,
   });
 
+  final CatalogNotifier catalog;
   final List<Equipment> items;
   final Set<int> selected;
   final void Function(int id) onToggle;
@@ -463,7 +560,7 @@ class _EquipmentCardList extends StatelessWidget {
             ),
             title: Text(item.name),
             subtitle: Text(
-              '${item.inventoryNumber} · ${categoryName(item.categoryId)} · ${item.dailyRate.toStringAsFixed(0)} ₽/сут.',
+              '${item.inventoryNumber} · ${catalog.categoryName(item.categoryId)} · ${item.dailyRate.toStringAsFixed(0)} ₽/сут.',
             ),
             onTap: () => onOpen(item.id),
             trailing: PopupMenuButton<String>(

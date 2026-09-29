@@ -18,4 +18,8 @@ abstract class ClientRepository {
   Future<void> restore(int id);
 
   Future<int> deleteMany(List<int> ids);
+
+  bool isPhoneTaken(String phone, {int? exceptId});
+
+  bool isEmailTaken(String email, {int? exceptId});
 }

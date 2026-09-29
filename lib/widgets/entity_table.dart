@@ -42,17 +42,16 @@ class EntityTable<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        return Scrollbar(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
-              child: SingleChildScrollView(
-                child: DataTable(
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: SingleChildScrollView(
+              child: DataTable(
                   sortColumnIndex: _sortIndex(),
                   sortAscending: sortAscending,
+                  showCheckboxColumn: true,
                   columns: [
-                    const DataColumn(label: Text('')),
                     ...columns.map(_buildColumn),
                     const DataColumn(label: Text('Действия')),
                   ],
@@ -63,12 +62,6 @@ class EntityTable<T> extends StatelessWidget {
                       selected: isSelected,
                       onSelectChanged: (_) => onToggleSelect(id),
                       cells: [
-                        DataCell(
-                          Checkbox(
-                            value: isSelected,
-                            onChanged: (_) => onToggleSelect(id),
-                          ),
-                        ),
                         ...columns.map((c) => DataCell(c.build(item))),
                         DataCell(actions(item)),
                       ],
@@ -77,8 +70,7 @@ class EntityTable<T> extends StatelessWidget {
                 ),
               ),
             ),
-          ),
-        );
+          );
       },
     );
   }
@@ -86,23 +78,13 @@ class EntityTable<T> extends StatelessWidget {
   int? _sortIndex() {
     final index = columns.indexWhere((c) => c.sortField == sortField);
     if (index < 0) return null;
-    return index + 1;
+    return index;
   }
 
   DataColumn _buildColumn(TableColumnSpec<T> spec) {
     return DataColumn(
       numeric: spec.numeric,
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(spec.label),
-          if (spec.sortField == sortField)
-            Icon(
-              sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-              size: 16,
-            ),
-        ],
-      ),
+      label: Text(spec.label),
       onSort: (_, _) => onSort(spec.sortField),
     );
   }

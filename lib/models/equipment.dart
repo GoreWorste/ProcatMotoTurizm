@@ -57,4 +57,36 @@ class Equipment {
       deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'inventoryNumber': inventoryNumber,
+        'categoryId': categoryId,
+        'brandId': brandId,
+        'purchaseYear': purchaseYear,
+        'dailyRate': dailyRate,
+        'condition': condition,
+        'unitsTotal': unitsTotal,
+        'unitsAvailable': unitsAvailable,
+        'tagIds': tagIds,
+        'deletedAt': deletedAt?.toIso8601String(),
+      };
+
+  factory Equipment.fromJson(Map<String, dynamic> json) => Equipment(
+        id: json['id'] as int? ?? 0,
+        name: json['name'] as String? ?? '',
+        inventoryNumber: json['inventoryNumber'] as String? ?? '',
+        categoryId: json['categoryId'] as int? ?? 0,
+        brandId: json['brandId'] as int? ?? 0,
+        purchaseYear: json['purchaseYear'] as int? ?? 0,
+        dailyRate: (json['dailyRate'] as num?)?.toDouble() ?? 0,
+        condition: json['condition'] as String? ?? '',
+        unitsTotal: json['unitsTotal'] as int? ?? 0,
+        unitsAvailable: json['unitsAvailable'] as int? ?? 0,
+        tagIds: (json['tagIds'] as List?)?.cast<int>() ?? const [],
+        deletedAt: json['deletedAt'] == null
+            ? null
+            : DateTime.parse(json['deletedAt'] as String),
+      );
 }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../models/catalog_data.dart';
+import '../state/catalog_notifier.dart';
 import '../models/load_status.dart';
 import '../routing/query_params.dart';
 import '../state/equipment_list_notifier.dart';
@@ -27,23 +27,44 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
     });
   }
 
+  void _goBackToList(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    final notifier = context.read<EquipmentListNotifier>();
+    final params = equipmentQueryToParams(notifier.query);
+    context.go(
+      Uri(path: '/equipment', queryParameters: params).toString(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final notifier = context.watch<EquipmentListNotifier>();
+    final catalog = context.watch<CatalogNotifier>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Карточка оборудования'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () => _goBackToList(context),
         ),
+        actions: [
+          if (notifier.detailItem?.deletedAt == null)
+            IconButton(
+              tooltip: 'Редактировать',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () => context.push('/equipment/${widget.id}/edit'),
+            ),
+        ],
       ),
-      body: _buildBody(notifier),
+      body: _buildBody(notifier, catalog),
     );
   }
 
-  Widget _buildBody(EquipmentListNotifier notifier) {
+  Widget _buildBody(EquipmentListNotifier notifier, CatalogNotifier catalog) {
     switch (notifier.detailStatus) {
       case LoadStatus.loading:
       case LoadStatus.idle:
@@ -65,14 +86,14 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
               const SizedBox(height: 16),
               _DetailRow('ID', '${item.id}'),
               _DetailRow('Инвентарный номер', item.inventoryNumber),
-              _DetailRow('Категория', categoryName(item.categoryId)),
-              _DetailRow('Бренд', brandName(item.brandId)),
+              _DetailRow('Категория', catalog.categoryName(item.categoryId)),
+              _DetailRow('Бренд', catalog.brandName(item.brandId)),
               _DetailRow('Год покупки', '${item.purchaseYear}'),
               _DetailRow('Тариф за сутки', '${item.dailyRate.toStringAsFixed(0)} ₽'),
               _DetailRow('Состояние', item.condition),
               _DetailRow('Всего единиц', '${item.unitsTotal}'),
               _DetailRow('Доступно', '${item.unitsAvailable}'),
-              _DetailRow('Теги', tagNames(item.tagIds)),
+              _DetailRow('Теги', catalog.tagNames(item.tagIds)),
               _DetailRow(
                 'Удалено',
                 item.deletedAt == null

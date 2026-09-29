@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -22,6 +21,9 @@ class ClientListScreen extends StatefulWidget {
 }
 
 class _ClientListScreenState extends State<ClientListScreen> {
+  String? _appliedUri;
+  bool _skipUriApply = false;
+
   static const _cities = [
     'Екатеринбург',
     'Челябинск',
@@ -32,14 +34,24 @@ class _ClientListScreenState extends State<ClientListScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final parsed =
-        clientQueryFromUri(GoRouterState.of(context).uri.queryParameters);
-    final notifier = context.read<ClientListNotifier>();
-    if (!_queriesEqual(parsed, notifier.query)) {
-      notifier.applyQuery(parsed);
-    } else if (notifier.status == LoadStatus.idle) {
-      notifier.load();
-    }
+    if (_skipUriApply) return;
+
+    final uriString = GoRouterState.of(context).uri.toString();
+    if (_appliedUri == uriString) return;
+    _appliedUri = uriString;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _skipUriApply) return;
+
+      final parsed =
+          clientQueryFromUri(GoRouterState.of(context).uri.queryParameters);
+      final notifier = context.read<ClientListNotifier>();
+      if (!_queriesEqual(parsed, notifier.query)) {
+        notifier.applyQuery(parsed);
+      } else if (notifier.status == LoadStatus.idle) {
+        notifier.load();
+      }
+    });
   }
 
   bool _queriesEqual(ClientQuery a, ClientQuery b) {
@@ -47,24 +59,19 @@ class _ClientListScreenState extends State<ClientListScreen> {
         clientQueryToParams(b).toString();
   }
 
-  void _syncUrl(ClientQuery query) {
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final uri = Uri(
-        path: '/clients',
-        queryParameters: clientQueryToParams(query),
-      );
-      final current = GoRouterState.of(context).uri.toString();
-      if (current != uri.toString()) {
-        context.go(uri.toString());
-      }
-    });
-  }
-
   Future<void> _apply(ClientQuery next) async {
+    _skipUriApply = true;
     final notifier = context.read<ClientListNotifier>();
     await notifier.applyQuery(next);
-    _syncUrl(notifier.query);
+    final uri = Uri(
+      path: '/clients',
+      queryParameters: clientQueryToParams(notifier.query),
+    );
+    _appliedUri = uri.toString();
+    if (mounted && GoRouterState.of(context).uri.toString() != _appliedUri) {
+      context.go(_appliedUri!);
+    }
+    _skipUriApply = false;
   }
 
   @override
@@ -72,14 +79,11 @@ class _ClientListScreenState extends State<ClientListScreen> {
     final notifier = context.watch<ClientListNotifier>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Клиенты'),
-        actions: [
-          TextButton(
-            onPressed: () => context.go('/equipment'),
-            child: const Text('Оборудование'),
-          ),
-        ],
+      appBar: AppBar(title: const Text('Клиенты')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push('/clients/new'),
+        tooltip: 'Добавить клиента',
+        child: const Icon(Icons.add),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -90,7 +94,7 @@ class _ClientListScreenState extends State<ClientListScreen> {
               children: [
                 DebouncedSearchField(
                   initialValue: notifier.query.search,
-                  hintText: 'Поиск по ФИО или телефону',
+                  hintText: 'Поиск по ФИО, почте или телефону',
                   onChanged: (value) =>
                       _apply(notifier.query.copyWith(search: value)),
                 ),
@@ -199,6 +203,11 @@ class _ClientListScreenState extends State<ClientListScreen> {
           label: 'ФИО',
           sortField: 'fullName',
           build: (c) => Text(c.fullName),
+        ),
+        TableColumnSpec(
+          label: 'Почта',
+          sortField: 'email',
+          build: (c) => Text(c.email),
         ),
         TableColumnSpec(
           label: 'Телефон',

@@ -18,4 +18,12 @@ abstract class EquipmentRepository {
   Future<void> restore(int id);
 
   Future<int> deleteMany(List<int> ids);
+
+  bool isInventoryNumberTaken(String inventoryNumber, {int? exceptId});
+
+  int countByBrandId(int brandId);
+
+  int countByCategoryId(int categoryId);
+
+  List<int> brandIdsForCategory(int categoryId);
 }

@@ -26,6 +26,18 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     });
   }
 
+  void _goBackToList(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    final notifier = context.read<ClientListNotifier>();
+    final params = clientQueryToParams(notifier.query);
+    context.go(
+      Uri(path: '/clients', queryParameters: params).toString(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final notifier = context.watch<ClientListNotifier>();
@@ -35,8 +47,16 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
         title: const Text('Карточка клиента'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () => _goBackToList(context),
         ),
+        actions: [
+          if (notifier.detailItem?.deletedAt == null)
+            IconButton(
+              tooltip: 'Редактировать',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () => context.push('/clients/${widget.id}/edit'),
+            ),
+        ],
       ),
       body: _buildBody(notifier),
     );
@@ -63,11 +83,17 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
               Text(item.fullName, style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 16),
               _DetailRow('ID', '${item.id}'),
+              _DetailRow('Электронная почта', item.email),
               _DetailRow('Телефон', item.phone),
               _DetailRow('Город', item.city),
               _DetailRow(
                 'Дата регистрации',
                 item.registeredAt.toLocal().toString(),
+              ),
+              _DetailRow('Номер билета', item.rentalCard.number),
+              _DetailRow(
+                'Дата выдачи билета',
+                item.rentalCard.issuedAt.toLocal().toString().split(' ').first,
               ),
               _DetailRow(
                 'Удалён',

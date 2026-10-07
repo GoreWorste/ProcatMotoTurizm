@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../core/api_exceptions.dart';
 import '../core/repository_exceptions.dart';
 import '../models/brand.dart';
 import '../models/category.dart';
@@ -140,7 +141,7 @@ class _CatalogEntityDetailScreenState extends State<CatalogEntityDetailScreen> {
         return const ListLoadingView();
       case LoadStatus.error:
         return ListErrorView(
-          message: notifier.detailError ?? 'Ошибка',
+          error: notifier.detailError ?? 'Ошибка',
           onRetry: () => notifier.loadDetail(widget.id),
         );
       case LoadStatus.success:
@@ -205,6 +206,11 @@ class _CatalogEntityDetailScreenState extends State<CatalogEntityDetailScreen> {
                           if (!mounted) return;
                           _goBack(context);
                         } on ReferenceInUseException catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.message)),
+                          );
+                        } on ConflictException catch (e) {
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text(e.message)),

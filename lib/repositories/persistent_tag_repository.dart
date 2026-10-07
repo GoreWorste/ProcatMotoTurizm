@@ -1,5 +1,7 @@
 import '../models/named_entity_query.dart';
 import '../models/page_result.dart';
+import 'package:dio/dio.dart';
+
 import '../models/tag.dart';
 import 'app_data_store.dart';
 import 'named_entity_find.dart';
@@ -13,7 +15,10 @@ class PersistentTagRepository implements TagRepository {
   List<Tag> get _items => _store.tags;
 
   @override
-  Future<PageResult<Tag>> find(NamedEntityQuery query) async {
+  Future<PageResult<Tag>> find(
+    NamedEntityQuery query, {
+    CancelToken? cancelToken,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
     if (query.search.trim() == '__error__') {
       throw StateError('Симуляция ошибки загрузки');

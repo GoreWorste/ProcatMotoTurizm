@@ -1,9 +1,14 @@
+import 'package:dio/dio.dart';
+
 import '../models/category.dart';
 import '../models/named_entity_query.dart';
 import '../models/page_result.dart';
 
 abstract class CategoryRepository {
-  Future<PageResult<Category>> find(NamedEntityQuery query);
+  Future<PageResult<Category>> find(
+    NamedEntityQuery query, {
+    CancelToken? cancelToken,
+  });
 
   Future<List<Category>> findAll({bool includeDeleted = false});
 

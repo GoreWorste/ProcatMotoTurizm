@@ -13,6 +13,7 @@ class FormScaffold extends StatelessWidget {
     required this.onSubmit,
     required this.submitLabel,
     required this.child,
+    this.submitting = false,
   });
 
   final String title;
@@ -22,6 +23,7 @@ class FormScaffold extends StatelessWidget {
   final Future<void> Function() onSubmit;
   final String submitLabel;
   final Widget child;
+  final bool submitting;
 
   Future<bool> _confirmLeave(BuildContext context) async {
     if (!dirty) return true;
@@ -72,8 +74,14 @@ class FormScaffold extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     FilledButton(
-                      onPressed: () async => await onSubmit(),
-                      child: Text(submitLabel),
+                      onPressed: submitting ? null : () async => await onSubmit(),
+                      child: submitting
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(submitLabel),
                     ),
                   ],
                 ),

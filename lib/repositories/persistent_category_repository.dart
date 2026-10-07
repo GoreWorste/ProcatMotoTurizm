@@ -1,4 +1,6 @@
 import '../core/repository_exceptions.dart';
+import 'package:dio/dio.dart';
+
 import '../models/category.dart';
 import '../models/named_entity_query.dart';
 import '../models/page_result.dart';
@@ -14,7 +16,10 @@ class PersistentCategoryRepository implements CategoryRepository {
   List<Category> get _items => _store.categories;
 
   @override
-  Future<PageResult<Category>> find(NamedEntityQuery query) async {
+  Future<PageResult<Category>> find(
+    NamedEntityQuery query, {
+    CancelToken? cancelToken,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
     if (query.search.trim() == '__error__') {
       throw StateError('Симуляция ошибки загрузки');

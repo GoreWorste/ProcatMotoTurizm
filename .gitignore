@@ -1,0 +1,25 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.iml
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (mock API)
+node_modules/
+
+# Локальные секреты
+.env
+.env.*
+
+# Временные отчёты (основные docx можно хранить в репо при необходимости)
+*.docx.bak

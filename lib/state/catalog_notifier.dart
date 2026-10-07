@@ -22,12 +22,22 @@ class CatalogNotifier extends ChangeNotifier {
   List<Brand> brands = [];
   List<Tag> tags = [];
 
-  Future<void> refresh() async {
-    categories = await _categories.findAll();
-    brands = await _brands.findAll();
-    tags = await _tags.findAll();
+  bool _cached = false;
+
+  Future<void> refresh({bool force = false}) async {
+    if (_cached && !force) return;
+    try {
+      categories = await _categories.findAll();
+      brands = await _brands.findAll();
+      tags = await _tags.findAll();
+      _cached = true;
+    } catch (_) {
+      _cached = false;
+    }
     notifyListeners();
   }
+
+  void invalidateCache() => _cached = false;
 
   String categoryName(int id) {
     for (final c in categories) {

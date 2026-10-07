@@ -1,0 +1,651 @@
+{
+  "meta": {
+    "equipmentNextId": 24,
+    "clientNextId": 11,
+    "userNextId": 4
+  },
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "passwordHash": "8fc8815bc748ea537805504b4499586a3bdbfad4ca44e69ba92b626ce3d46528",
+      "role": "admin",
+      "displayName": "Администратор"
+    },
+    {
+      "id": 2,
+      "username": "manager",
+      "passwordHash": "08b24deb74d62e8f99b9f78b68a71f80f9a3ed80780ed26264af6324f22471fb",
+      "role": "manager",
+      "displayName": "Менеджер проката"
+    },
+    {
+      "id": 3,
+      "username": "viewer",
+      "passwordHash": "92dfbe960b73b067df216c2cf8ca0fbc35dd60362e680d16e0a306d564e18f85",
+      "role": "viewer",
+      "displayName": "Наблюдатель"
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "Палатки",
+      "deletedAt": null
+    },
+    {
+      "id": 2,
+      "name": "Велосипеды",
+      "deletedAt": null
+    },
+    {
+      "id": 3,
+      "name": "Мотоциклы",
+      "deletedAt": null
+    },
+    {
+      "id": 4,
+      "name": "Квадроциклы",
+      "deletedAt": null
+    },
+    {
+      "id": 5,
+      "name": "Водный транспорт",
+      "deletedAt": null
+    },
+    {
+      "id": 6,
+      "name": "Снегоходы",
+      "deletedAt": null
+    }
+  ],
+  "brands": [
+    {
+      "id": 1,
+      "name": "Tramp",
+      "deletedAt": "2026-10-06T09:37:45.111Z"
+    },
+    {
+      "id": 2,
+      "name": "Stels",
+      "deletedAt": null
+    },
+    {
+      "id": 3,
+      "name": "Yamaha",
+      "deletedAt": null
+    },
+    {
+      "id": 4,
+      "name": "Polaris",
+      "deletedAt": null
+    },
+    {
+      "id": 5,
+      "name": "Trek",
+      "deletedAt": null
+    },
+    {
+      "id": 6,
+      "name": "Sea-Doo",
+      "deletedAt": null
+    },
+    {
+      "id": 7,
+      "name": "Buran",
+      "deletedAt": null
+    }
+  ],
+  "tags": [
+    {
+      "id": 1,
+      "name": "зима",
+      "deletedAt": null
+    },
+    {
+      "id": 2,
+      "name": "лето",
+      "deletedAt": null
+    },
+    {
+      "id": 3,
+      "name": "для новичков",
+      "deletedAt": null
+    },
+    {
+      "id": 4,
+      "name": "экстрим",
+      "deletedAt": null
+    },
+    {
+      "id": 5,
+      "name": "водный",
+      "deletedAt": null
+    }
+  ],
+  "equipment": [
+    {
+      "id": 1,
+      "name": "Палатка Tramp Lite 2",
+      "inventoryNumber": "EQ-1001",
+      "categoryId": 1,
+      "brandId": 1,
+      "purchaseYear": 2021,
+      "dailyRate": 450,
+      "condition": "хорошее",
+      "unitsTotal": 8,
+      "unitsAvailable": 5,
+      "tagIds": [
+        2,
+        3
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 2,
+      "name": "Палатка Tramp Alpine 4",
+      "inventoryNumber": "EQ-1002",
+      "categoryId": 1,
+      "brandId": 1,
+      "purchaseYear": 2020,
+      "dailyRate": 780,
+      "condition": "новое",
+      "unitsTotal": 4,
+      "unitsAvailable": 4,
+      "tagIds": [
+        1,
+        2
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 3,
+      "name": "Велосипед Trek Marlin 7",
+      "inventoryNumber": "EQ-2001",
+      "categoryId": 2,
+      "brandId": 5,
+      "purchaseYear": 2022,
+      "dailyRate": 600,
+      "condition": "хорошее",
+      "unitsTotal": 6,
+      "unitsAvailable": 3,
+      "tagIds": [
+        2,
+        3
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 4,
+      "name": "Велосипед Stels Navigator 610",
+      "inventoryNumber": "EQ-2002",
+      "categoryId": 2,
+      "brandId": 2,
+      "purchaseYear": 2019,
+      "dailyRate": 350,
+      "condition": "требует обслуживания",
+      "unitsTotal": 10,
+      "unitsAvailable": 7,
+      "tagIds": [
+        2,
+        3
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 5,
+      "name": "Мотоцикл Yamaha XT660R",
+      "inventoryNumber": "EQ-3001",
+      "categoryId": 3,
+      "brandId": 3,
+      "purchaseYear": 2018,
+      "dailyRate": 3200,
+      "condition": "хорошее",
+      "unitsTotal": 3,
+      "unitsAvailable": 1,
+      "tagIds": [
+        2,
+        4
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 6,
+      "name": "Мотоцикл Stels Flame 200",
+      "inventoryNumber": "EQ-3002",
+      "categoryId": 3,
+      "brandId": 2,
+      "purchaseYear": 2023,
+      "dailyRate": 1800,
+      "condition": "новое",
+      "unitsTotal": 5,
+      "unitsAvailable": 4,
+      "tagIds": [
+        2,
+        3,
+        4
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 7,
+      "name": "Квадроцикл Stels ATV 500",
+      "inventoryNumber": "EQ-4001",
+      "categoryId": 4,
+      "brandId": 2,
+      "purchaseYear": 2020,
+      "dailyRate": 4500,
+      "condition": "хорошее",
+      "unitsTotal": 4,
+      "unitsAvailable": 2,
+      "tagIds": [
+        2,
+        4
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 8,
+      "name": "Квадроцикл Polaris Sportsman 570",
+      "inventoryNumber": "EQ-4002",
+      "categoryId": 4,
+      "brandId": 4,
+      "purchaseYear": 2021,
+      "dailyRate": 5200,
+      "condition": "новое",
+      "unitsTotal": 2,
+      "unitsAvailable": 2,
+      "tagIds": [
+        1,
+        2,
+        4
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 9,
+      "name": "Гидроцикл Sea-Doo Spark Trixx",
+      "inventoryNumber": "EQ-5001",
+      "categoryId": 5,
+      "brandId": 6,
+      "purchaseYear": 2022,
+      "dailyRate": 6800,
+      "condition": "новое",
+      "unitsTotal": 3,
+      "unitsAvailable": 1,
+      "tagIds": [
+        2,
+        5
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 10,
+      "name": "Каяк двухместный Tramp",
+      "inventoryNumber": "EQ-5002",
+      "categoryId": 5,
+      "brandId": 1,
+      "purchaseYear": 2019,
+      "dailyRate": 900,
+      "condition": "хорошее",
+      "unitsTotal": 12,
+      "unitsAvailable": 9,
+      "tagIds": [
+        2,
+        5,
+        3
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 11,
+      "name": "Снегоход Buran LE",
+      "inventoryNumber": "EQ-6001",
+      "categoryId": 6,
+      "brandId": 7,
+      "purchaseYear": 2017,
+      "dailyRate": 4100,
+      "condition": "требует обслуживания",
+      "unitsTotal": 2,
+      "unitsAvailable": 0,
+      "tagIds": [
+        1,
+        3
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 12,
+      "name": "Снегоход Yamaha VK540",
+      "inventoryNumber": "EQ-6002",
+      "categoryId": 6,
+      "brandId": 3,
+      "purchaseYear": 2020,
+      "dailyRate": 5500,
+      "condition": "хорошее",
+      "unitsTotal": 3,
+      "unitsAvailable": 2,
+      "tagIds": [
+        1,
+        4
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 13,
+      "name": "Палатка Tramp Wind 3",
+      "inventoryNumber": "EQ-1003",
+      "categoryId": 1,
+      "brandId": 1,
+      "purchaseYear": 2024,
+      "dailyRate": 520,
+      "condition": "новое",
+      "unitsTotal": 6,
+      "unitsAvailable": 6,
+      "tagIds": [
+        2
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 14,
+      "name": "Велосипед Trek FX 3",
+      "inventoryNumber": "EQ-2003",
+      "categoryId": 2,
+      "brandId": 5,
+      "purchaseYear": 2023,
+      "dailyRate": 550,
+      "condition": "новое",
+      "unitsTotal": 4,
+      "unitsAvailable": 2,
+      "tagIds": [
+        2,
+        3
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 15,
+      "name": "Мотоцикл Yamaha MT-07",
+      "inventoryNumber": "EQ-3003",
+      "categoryId": 3,
+      "brandId": 3,
+      "purchaseYear": 2022,
+      "dailyRate": 4800,
+      "condition": "хорошее",
+      "unitsTotal": 2,
+      "unitsAvailable": 1,
+      "tagIds": [
+        2,
+        4
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 16,
+      "name": "Квадроцикл Stels Guepard 800",
+      "inventoryNumber": "EQ-4003",
+      "categoryId": 4,
+      "brandId": 2,
+      "purchaseYear": 2019,
+      "dailyRate": 3900,
+      "condition": "хорошее",
+      "unitsTotal": 3,
+      "unitsAvailable": 1,
+      "tagIds": [
+        2,
+        4
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 17,
+      "name": "SUP-доска Sea-Doo",
+      "inventoryNumber": "EQ-5003",
+      "categoryId": 5,
+      "brandId": 6,
+      "purchaseYear": 2021,
+      "dailyRate": 1200,
+      "condition": "хорошее",
+      "unitsTotal": 8,
+      "unitsAvailable": 6,
+      "tagIds": [
+        2,
+        5
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 18,
+      "name": "Снегоход Buran 4T",
+      "inventoryNumber": "EQ-6003",
+      "categoryId": 6,
+      "brandId": 7,
+      "purchaseYear": 2023,
+      "dailyRate": 4700,
+      "condition": "новое",
+      "unitsTotal": 2,
+      "unitsAvailable": 2,
+      "tagIds": [
+        1
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 19,
+      "name": "Палатка Tramp Family 6",
+      "inventoryNumber": "EQ-1004",
+      "categoryId": 1,
+      "brandId": 1,
+      "purchaseYear": 2018,
+      "dailyRate": 1100,
+      "condition": "требует обслуживания",
+      "unitsTotal": 3,
+      "unitsAvailable": 1,
+      "tagIds": [
+        2,
+        3
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 20,
+      "name": "Велосипед Stels Flash 2.0",
+      "inventoryNumber": "EQ-2004",
+      "categoryId": 2,
+      "brandId": 2,
+      "purchaseYear": 2024,
+      "dailyRate": 420,
+      "condition": "новое",
+      "unitsTotal": 7,
+      "unitsAvailable": 5,
+      "tagIds": [
+        2,
+        3,
+        4
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 21,
+      "name": "Мотоцикл Stels Delta 200",
+      "inventoryNumber": "EQ-3004",
+      "categoryId": 3,
+      "brandId": 2,
+      "purchaseYear": 2020,
+      "dailyRate": 1500,
+      "condition": "хорошее",
+      "unitsTotal": 4,
+      "unitsAvailable": 3,
+      "tagIds": [
+        3
+      ],
+      "deletedAt": null
+    },
+    {
+      "id": 22,
+      "name": "Катамаран Sea-Doo Switch",
+      "inventoryNumber": "EQ-5004",
+      "categoryId": 5,
+      "brandId": 6,
+      "purchaseYear": 2024,
+      "dailyRate": 8900,
+      "condition": "новое",
+      "unitsTotal": 1,
+      "unitsAvailable": 1,
+      "tagIds": [
+        2,
+        5,
+        4
+      ],
+      "deletedAt": null
+    },
+    {
+      "name": "test",
+      "inventoryNumber": "EQ-1023",
+      "categoryId": 5,
+      "brandId": 4,
+      "purchaseYear": 2010,
+      "dailyRate": 12,
+      "condition": "хорошее",
+      "unitsTotal": 12,
+      "unitsAvailable": 1,
+      "tagIds": [
+        5
+      ],
+      "id": 23,
+      "deletedAt": "2026-10-06T10:01:55.280Z"
+    }
+  ],
+  "clients": [
+    {
+      "id": 1,
+      "fullName": "Иванов Алексей Петрович",
+      "email": "ivanov@example.ru",
+      "phone": "+7 (912) 345-67-01",
+      "city": "Екатеринбург",
+      "registeredAt": "2022-03-12T00:00:00.000",
+      "rentalCard": {
+        "number": "RC-00001",
+        "issuedAt": "2022-03-12T00:00:00.000"
+      },
+      "deletedAt": null
+    },
+    {
+      "id": 2,
+      "fullName": "Петрова Мария Сергеевна",
+      "email": "petrova@example.ru",
+      "phone": "+7 (922) 111-22-33",
+      "city": "Челябинск",
+      "registeredAt": "2021-11-05T00:00:00.000",
+      "rentalCard": {
+        "number": "RC-00002",
+        "issuedAt": "2021-11-05T00:00:00.000"
+      },
+      "deletedAt": null
+    },
+    {
+      "id": 3,
+      "fullName": "Сидоров Дмитрий Игоревич",
+      "email": "sidorov@example.ru",
+      "phone": "+7 (343) 555-44-22",
+      "city": "Екатеринбург",
+      "registeredAt": "2023-01-20T00:00:00.000",
+      "rentalCard": {
+        "number": "RC-00003",
+        "issuedAt": "2023-01-20T00:00:00.000"
+      },
+      "deletedAt": null
+    },
+    {
+      "id": 4,
+      "fullName": "Козлова Анна Викторовна",
+      "email": "kozlova@example.ru",
+      "phone": "+7 (912) 777-88-99",
+      "city": "Пермь",
+      "registeredAt": "2020-07-08T00:00:00.000",
+      "rentalCard": {
+        "number": "RC-00004",
+        "issuedAt": "2020-07-08T00:00:00.000"
+      },
+      "deletedAt": null
+    },
+    {
+      "id": 5,
+      "fullName": "Новиков Павел Олегович",
+      "email": "novikov@example.ru",
+      "phone": "+7 (351) 200-30-40",
+      "city": "Челябинск",
+      "registeredAt": "2024-02-14T00:00:00.000",
+      "rentalCard": {
+        "number": "RC-00005",
+        "issuedAt": "2024-02-14T00:00:00.000"
+      },
+      "deletedAt": null
+    },
+    {
+      "id": 6,
+      "fullName": "Морозова Елена Андреевна",
+      "email": "morozova@example.ru",
+      "phone": "+7 (912) 900-11-22",
+      "city": "Тюмень",
+      "registeredAt": "2022-09-30T00:00:00.000",
+      "rentalCard": {
+        "number": "RC-00006",
+        "issuedAt": "2022-09-30T00:00:00.000"
+      },
+      "deletedAt": null
+    },
+    {
+      "id": 7,
+      "fullName": "Волков Артём Николаевич",
+      "email": "volkov@example.ru",
+      "phone": "+7 (922) 333-44-55",
+      "city": "Пермь",
+      "registeredAt": "2023-06-18T00:00:00.000",
+      "rentalCard": {
+        "number": "RC-00007",
+        "issuedAt": "2023-06-18T00:00:00.000"
+      },
+      "deletedAt": null
+    },
+    {
+      "id": 8,
+      "fullName": "Смирнова Ольга Дмитриевна",
+      "email": "smirnova@example.ru",
+      "phone": "+7 (343) 666-77-88",
+      "city": "Екатеринбург",
+      "registeredAt": "2021-04-02T00:00:00.000",
+      "rentalCard": {
+        "number": "RC-00008",
+        "issuedAt": "2021-04-02T00:00:00.000"
+      },
+      "deletedAt": null
+    },
+    {
+      "id": 9,
+      "fullName": "Фёдоров Кирилл Александрович",
+      "email": "fedorov@example.ru",
+      "phone": "+7 (912) 123-45-67",
+      "city": "Тюмень",
+      "registeredAt": "2024-08-01T00:00:00.000",
+      "rentalCard": {
+        "number": "RC-00009",
+        "issuedAt": "2024-08-01T00:00:00.000"
+      },
+      "deletedAt": null
+    },
+    {
+      "fullName": "test4",
+      "email": "volkov@exemple.ru",
+      "phone": "+79292292329",
+      "city": "Екатеринбург",
+      "registeredAt": "2026-10-06T12:33:43.284",
+      "rentalCard": {
+        "number": "1233",
+        "issuedAt": "2026-10-06T00:00:00.000"
+      },
+      "id": 10
+    }
+  ]
+}

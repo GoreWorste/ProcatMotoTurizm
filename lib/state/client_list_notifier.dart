@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../core/api_exceptions.dart';
 import '../models/client.dart';
 import '../models/client_query.dart';
 import '../models/load_status.dart';
@@ -14,7 +15,7 @@ class ClientListNotifier extends ChangeNotifier {
   ClientQuery query = const ClientQuery();
   PageResult<Client> result = PageResult<Client>.empty();
   LoadStatus status = LoadStatus.idle;
-  String? error;
+  Object? error;
   final Set<int> selected = {};
 
   Client? detailItem;
@@ -23,17 +24,34 @@ class ClientListNotifier extends ChangeNotifier {
 
   bool get showDeleted => query.includeDeleted;
 
-  Future<void> load() async {
+  int _loadGeneration = 0;
+
+  Future<void> load({bool force = false}) async {
+    if (status == LoadStatus.loading && !force) return;
+
+    final generation = ++_loadGeneration;
     status = LoadStatus.loading;
     error = null;
     notifyListeners();
 
     try {
-      result = await _repository.find(query);
+      final page = await _repository.find(query).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw const NetworkException(
+          'Сервер не отвечает. Запустите .\\scripts\\run_api_server.ps1 (порт 8080).',
+        ),
+      );
+      if (generation != _loadGeneration) return;
+      result = page;
       status = LoadStatus.success;
-    } catch (e) {
+    } catch (e, st) {
+      if (generation != _loadGeneration) return;
       status = LoadStatus.error;
-      error = e.toString();
+      error = mapLoadError(e);
+      result = PageResult<Client>.empty();
+      if (kDebugMode) {
+        debugPrint('[ClientList] load failed: $error ($st)');
+      }
     }
     notifyListeners();
   }
@@ -41,7 +59,7 @@ class ClientListNotifier extends ChangeNotifier {
   Future<void> applyQuery(ClientQuery next) async {
     query = next;
     selected.clear();
-    await load();
+    await load(force: true);
   }
 
   void toggleSelection(int id) {
@@ -68,7 +86,7 @@ class ClientListNotifier extends ChangeNotifier {
       }
     }
     selected.clear();
-    await load();
+    await load(force: true);
   }
 
   Future<void> hardDeleteSelected() => deleteSelected(hard: true);
@@ -80,22 +98,22 @@ class ClientListNotifier extends ChangeNotifier {
       await _repository.restore(id);
     }
     selected.clear();
-    await load();
+    await load(force: true);
   }
 
   Future<void> restore(int id) async {
     await _repository.restore(id);
-    await load();
+    await load(force: true);
   }
 
   Future<void> softDelete(int id) async {
     await _repository.softDelete(id);
-    await load();
+    await load(force: true);
   }
 
   Future<void> hardDelete(int id) async {
     await _repository.hardDelete(id);
-    await load();
+    await load(force: true);
   }
 
   Future<void> loadDetail(int id) async {
@@ -113,7 +131,7 @@ class ClientListNotifier extends ChangeNotifier {
       }
     } catch (e) {
       detailStatus = LoadStatus.error;
-      detailError = e.toString();
+      detailError = describeError(mapLoadError(e));
     }
     notifyListeners();
   }

@@ -13,6 +13,9 @@ import '../state/equipment_list_notifier.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/debounced_search_field.dart';
 import '../widgets/entity_table.dart';
+import '../core/auth_permissions.dart';
+import '../core/layout_breakpoints.dart';
+import '../state/auth_notifier.dart';
 import '../widgets/list_state_views.dart';
 import '../widgets/pagination_bar.dart';
 
@@ -45,8 +48,9 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
       final notifier = context.read<EquipmentListNotifier>();
       if (!_queriesEqual(parsed, notifier.query)) {
         notifier.applyQuery(parsed);
-      } else if (notifier.status == LoadStatus.idle) {
-        notifier.load();
+      } else if (notifier.status == LoadStatus.idle ||
+          notifier.status == LoadStatus.loading) {
+        notifier.load(force: notifier.status == LoadStatus.loading);
       }
     });
   }
@@ -77,12 +81,23 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     final catalog = context.watch<CatalogNotifier>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Оборудование')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/equipment/new'),
-        tooltip: 'Добавить',
-        child: const Icon(Icons.add),
+      appBar: AppBar(
+        title: const Text('Оборудование'),
+        actions: [
+          IconButton(
+            tooltip: 'Обновить',
+            onPressed: () => notifier.load(force: true),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
+      floatingActionButton: canEditRentals(context.watch<AuthNotifier>())
+          ? FloatingActionButton(
+              onPressed: () => context.push('/equipment/new'),
+              tooltip: 'Добавить',
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -149,22 +164,26 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   }
 
   Widget _buildBody(EquipmentListNotifier notifier, CatalogNotifier catalog) {
+    if (notifier.status == LoadStatus.error) {
+      return ListErrorView(
+        error: notifier.error,
+        onRetry: () => notifier.load(force: true),
+      );
+    }
     switch (notifier.status) {
       case LoadStatus.loading:
       case LoadStatus.idle:
         return const ListLoadingView();
       case LoadStatus.error:
-        return ListErrorView(
-          message: notifier.error ?? 'Ошибка загрузки',
-          onRetry: () => notifier.load(),
-        );
+        return const SizedBox.shrink();
       case LoadStatus.success:
         if (notifier.result.items.isEmpty) {
           return const ListEmptyView();
         }
         return LayoutBuilder(
           builder: (context, constraints) {
-            final useCards = constraints.maxWidth < 600;
+            final useCards =
+                constraints.maxWidth < LayoutBreakpoints.listTableMin;
             if (useCards) {
               return _EquipmentCardList(
                 catalog: catalog,

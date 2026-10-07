@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../models/client.dart';
 import '../models/client_query.dart';
 import '../models/page_result.dart';
@@ -15,7 +17,10 @@ class PersistentClientRepository implements ClientRepository {
       phone.replaceAll(RegExp(r'\D'), '');
 
   @override
-  Future<PageResult<Client>> find(ClientQuery query) async {
+  Future<PageResult<Client>> find(
+    ClientQuery query, {
+    CancelToken? cancelToken,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
 
     if (query.search.trim() == '__error__') {

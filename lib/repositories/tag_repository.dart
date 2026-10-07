@@ -1,9 +1,14 @@
+import 'package:dio/dio.dart';
+
 import '../models/tag.dart';
 import '../models/named_entity_query.dart';
 import '../models/page_result.dart';
 
 abstract class TagRepository {
-  Future<PageResult<Tag>> find(NamedEntityQuery query);
+  Future<PageResult<Tag>> find(
+    NamedEntityQuery query, {
+    CancelToken? cancelToken,
+  });
 
   Future<List<Tag>> findAll({bool includeDeleted = false});
 

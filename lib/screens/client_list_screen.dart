@@ -10,6 +10,9 @@ import '../state/client_list_notifier.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/debounced_search_field.dart';
 import '../widgets/entity_table.dart';
+import '../core/auth_permissions.dart';
+import '../core/layout_breakpoints.dart';
+import '../state/auth_notifier.dart';
 import '../widgets/list_state_views.dart';
 import '../widgets/pagination_bar.dart';
 
@@ -48,8 +51,9 @@ class _ClientListScreenState extends State<ClientListScreen> {
       final notifier = context.read<ClientListNotifier>();
       if (!_queriesEqual(parsed, notifier.query)) {
         notifier.applyQuery(parsed);
-      } else if (notifier.status == LoadStatus.idle) {
-        notifier.load();
+      } else if (notifier.status == LoadStatus.idle ||
+          notifier.status == LoadStatus.loading) {
+        notifier.load(force: notifier.status == LoadStatus.loading);
       }
     });
   }
@@ -79,12 +83,23 @@ class _ClientListScreenState extends State<ClientListScreen> {
     final notifier = context.watch<ClientListNotifier>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Клиенты')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/clients/new'),
-        tooltip: 'Добавить клиента',
-        child: const Icon(Icons.add),
+      appBar: AppBar(
+        title: const Text('Клиенты'),
+        actions: [
+          IconButton(
+            tooltip: 'Обновить',
+            onPressed: () => notifier.load(force: true),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
+      floatingActionButton: canEditRentals(context.watch<AuthNotifier>())
+          ? FloatingActionButton(
+              onPressed: () => context.push('/clients/new'),
+              tooltip: 'Добавить клиента',
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -151,22 +166,25 @@ class _ClientListScreenState extends State<ClientListScreen> {
   }
 
   Widget _buildBody(ClientListNotifier notifier) {
+    if (notifier.status == LoadStatus.error) {
+      return ListErrorView(
+        error: notifier.error,
+        onRetry: () => notifier.load(force: true),
+      );
+    }
     switch (notifier.status) {
       case LoadStatus.loading:
       case LoadStatus.idle:
         return const ListLoadingView();
       case LoadStatus.error:
-        return ListErrorView(
-          message: notifier.error ?? 'Ошибка загрузки',
-          onRetry: () => notifier.load(),
-        );
+        return const SizedBox.shrink();
       case LoadStatus.success:
         if (notifier.result.items.isEmpty) {
           return const ListEmptyView();
         }
         return LayoutBuilder(
           builder: (context, constraints) {
-            if (constraints.maxWidth < 600) {
+            if (constraints.maxWidth < LayoutBreakpoints.listTableMin) {
               return _ClientCardList(
                 items: notifier.result.items,
                 selected: notifier.selected,

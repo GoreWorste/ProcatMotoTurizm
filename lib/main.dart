@@ -1,9 +1,16 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'api/auth_api.dart';
+import 'core/api_client.dart';
+import 'core/config.dart';
+import 'repositories/api/api_catalog_repositories.dart';
+import 'repositories/api/api_client_repository.dart';
+import 'repositories/api/api_equipment_repository.dart';
 import 'repositories/app_data_store.dart';
 import 'repositories/brand_repository.dart';
 import 'repositories/category_repository.dart';
@@ -18,47 +25,78 @@ import 'repositories/tag_repository.dart';
 import 'models/brand.dart';
 import 'models/category.dart';
 import 'models/tag.dart';
-import 'screens/catalog_entity_detail_screen.dart';
-import 'screens/catalog_entity_form_screen.dart';
-import 'screens/catalog_entity_list_screen.dart';
-import 'screens/client_detail_screen.dart';
-import 'screens/client_form_screen.dart';
-import 'screens/client_list_screen.dart';
-import 'screens/equipment_detail_screen.dart';
-import 'screens/equipment_form_screen.dart';
-import 'screens/equipment_list_screen.dart';
+import 'routing/app_router.dart';
+import 'state/auth_notifier.dart';
 import 'state/catalog_notifier.dart';
 import 'state/client_list_notifier.dart';
 import 'state/equipment_list_notifier.dart';
 import 'state/named_entity_list_notifier.dart';
-import 'widgets/app_shell.dart';
+import 'widgets/inactivity_watcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
-  final prefs = await SharedPreferences.getInstance();
-  final store = AppDataStore(prefs);
-  await store.restore();
 
-  runApp(ProcatApp(store: store));
+  final prefs = await SharedPreferences.getInstance();
+  AppDataStore? store;
+  if (!useApiBackend) {
+    store = AppDataStore(prefs);
+    await store.restore();
+  }
+
+  final auth = AuthNotifier(prefs, AuthApi());
+  await auth.restore();
+
+  final router = buildAppRouter(auth);
+
+  runApp(ProcatApp(store: store, auth: auth, router: router));
 }
 
 class ProcatApp extends StatelessWidget {
-  const ProcatApp({super.key, required this.store});
+  const ProcatApp({
+    super.key,
+    this.store,
+    required this.auth,
+    required this.router,
+  });
 
-  final AppDataStore store;
+  final AppDataStore? store;
+  final AuthNotifier auth;
+  final GoRouter router;
 
   @override
   Widget build(BuildContext context) {
-    final equipmentRepository = PersistentEquipmentRepository(store);
-    final clientRepository = PersistentClientRepository(store);
-    final categoryRepository = PersistentCategoryRepository(store);
-    final brandRepository = PersistentBrandRepository(store);
-    final tagRepository = PersistentTagRepository(store);
+    late final EquipmentRepository equipmentRepository;
+    late final ClientRepository clientRepository;
+    late final CategoryRepository categoryRepository;
+    late final BrandRepository brandRepository;
+    late final TagRepository tagRepository;
+    Dio? dio;
 
-    return MultiProvider(
+    if (useApiBackend) {
+      dio = buildDio(
+        tokenProvider: () => auth.accessToken,
+        onRefreshTokens: auth.refreshTokens,
+      );
+      equipmentRepository = ApiEquipmentRepository(dio);
+      clientRepository = ApiClientRepository(dio);
+      categoryRepository = ApiCategoryRepository(dio);
+      brandRepository = ApiBrandRepository(dio);
+      tagRepository = ApiTagRepository(dio);
+    } else {
+      final dataStore = store!;
+      equipmentRepository = PersistentEquipmentRepository(dataStore);
+      clientRepository = PersistentClientRepository(dataStore);
+      categoryRepository = PersistentCategoryRepository(dataStore);
+      brandRepository = PersistentBrandRepository(dataStore);
+      tagRepository = PersistentTagRepository(dataStore);
+    }
+
+    Widget app = MultiProvider(
       providers: [
-        Provider.value(value: store),
+        ChangeNotifierProvider<AuthNotifier>.value(value: auth),
+        if (dio != null) Provider<Dio>.value(value: dio),
+        if (store != null) Provider<AppDataStore>.value(value: store!),
         Provider<EquipmentRepository>.value(value: equipmentRepository),
         Provider<ClientRepository>.value(value: clientRepository),
         Provider<CategoryRepository>.value(value: categoryRepository),
@@ -114,192 +152,29 @@ class ProcatApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
           useMaterial3: true,
         ),
-        routerConfig: _router,
+        routerConfig: router,
         builder: (context, child) {
-          final message = store.storageResetMessage;
-          if (message == null || child == null) return child ?? const SizedBox();
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            final messenger = ScaffoldMessenger.maybeOf(context);
-            messenger?.showSnackBar(SnackBar(content: Text(message)));
-            store.storageResetMessage = null;
-          });
-          return child;
+          final message = store?.storageResetMessage;
+          if (message != null && child != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final messenger = ScaffoldMessenger.maybeOf(context);
+              messenger?.showSnackBar(SnackBar(content: Text(message)));
+              store!.storageResetMessage = null;
+            });
+          }
+          var body = child ?? const SizedBox();
+          if (useApiBackend && auth.isAuthenticated) {
+            body = InactivityWatcher(
+              timeout: inactivityLogoutDuration,
+              onTimeout: () => auth.logout(),
+              child: body,
+            );
+          }
+          return body;
         },
       ),
     );
+
+    return app;
   }
 }
-
-final GoRouter _router = GoRouter(
-  routes: [
-    GoRoute(
-      path: '/',
-      redirect: (context, state) => '/equipment',
-    ),
-    ShellRoute(
-      builder: (context, state, child) => AppShell(child: child),
-      routes: [
-        GoRoute(
-          path: '/equipment',
-          builder: (context, state) => const EquipmentListScreen(),
-          routes: [
-            GoRoute(
-              path: 'new',
-              builder: (context, state) => const EquipmentFormScreen(),
-            ),
-            GoRoute(
-              path: ':id',
-              builder: (context, state) {
-                final id = int.parse(state.pathParameters['id']!);
-                return EquipmentDetailScreen(id: id);
-              },
-              routes: [
-                GoRoute(
-                  path: 'edit',
-                  builder: (context, state) {
-                    final id = int.parse(state.pathParameters['id']!);
-                    return EquipmentFormScreen(id: id);
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-        GoRoute(
-          path: '/clients',
-          builder: (context, state) => const ClientListScreen(),
-          routes: [
-            GoRoute(
-              path: 'new',
-              builder: (context, state) => const ClientFormScreen(),
-            ),
-            GoRoute(
-              path: ':id',
-              builder: (context, state) {
-                final id = int.parse(state.pathParameters['id']!);
-                return ClientDetailScreen(id: id);
-              },
-              routes: [
-                GoRoute(
-                  path: 'edit',
-                  builder: (context, state) {
-                    final id = int.parse(state.pathParameters['id']!);
-                    return ClientFormScreen(id: id);
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-        GoRoute(
-          path: '/categories',
-          builder: (context, state) => const CatalogEntityListScreen(
-            kind: CatalogEntityKind.category,
-          ),
-          routes: [
-            GoRoute(
-              path: 'new',
-              builder: (context, state) => const CatalogEntityFormScreen(
-                kind: CatalogEntityKind.category,
-              ),
-            ),
-            GoRoute(
-              path: ':id',
-              builder: (context, state) {
-                final id = int.parse(state.pathParameters['id']!);
-                return CatalogEntityDetailScreen(
-                  kind: CatalogEntityKind.category,
-                  id: id,
-                );
-              },
-              routes: [
-                GoRoute(
-                  path: 'edit',
-                  builder: (context, state) {
-                    final id = int.parse(state.pathParameters['id']!);
-                    return CatalogEntityFormScreen(
-                      kind: CatalogEntityKind.category,
-                      id: id,
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-        GoRoute(
-          path: '/brands',
-          builder: (context, state) => const CatalogEntityListScreen(
-            kind: CatalogEntityKind.brand,
-          ),
-          routes: [
-            GoRoute(
-              path: 'new',
-              builder: (context, state) => const CatalogEntityFormScreen(
-                kind: CatalogEntityKind.brand,
-              ),
-            ),
-            GoRoute(
-              path: ':id',
-              builder: (context, state) {
-                final id = int.parse(state.pathParameters['id']!);
-                return CatalogEntityDetailScreen(
-                  kind: CatalogEntityKind.brand,
-                  id: id,
-                );
-              },
-              routes: [
-                GoRoute(
-                  path: 'edit',
-                  builder: (context, state) {
-                    final id = int.parse(state.pathParameters['id']!);
-                    return CatalogEntityFormScreen(
-                      kind: CatalogEntityKind.brand,
-                      id: id,
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-        GoRoute(
-          path: '/tags',
-          builder: (context, state) => const CatalogEntityListScreen(
-            kind: CatalogEntityKind.tag,
-          ),
-          routes: [
-            GoRoute(
-              path: 'new',
-              builder: (context, state) => const CatalogEntityFormScreen(
-                kind: CatalogEntityKind.tag,
-              ),
-            ),
-            GoRoute(
-              path: ':id',
-              builder: (context, state) {
-                final id = int.parse(state.pathParameters['id']!);
-                return CatalogEntityDetailScreen(
-                  kind: CatalogEntityKind.tag,
-                  id: id,
-                );
-              },
-              routes: [
-                GoRoute(
-                  path: 'edit',
-                  builder: (context, state) {
-                    final id = int.parse(state.pathParameters['id']!);
-                    return CatalogEntityFormScreen(
-                      kind: CatalogEntityKind.tag,
-                      id: id,
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    ),
-  ],
-);

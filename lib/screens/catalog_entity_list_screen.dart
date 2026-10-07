@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../core/api_exceptions.dart';
 import '../core/repository_exceptions.dart';
 import '../models/brand.dart';
 import '../models/category.dart';
@@ -13,6 +14,9 @@ import '../state/named_entity_list_notifier.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/debounced_search_field.dart';
 import '../widgets/entity_table.dart';
+import '../core/auth_permissions.dart';
+import '../core/layout_breakpoints.dart';
+import '../state/auth_notifier.dart';
 import '../widgets/list_state_views.dart';
 import '../widgets/pagination_bar.dart';
 
@@ -72,8 +76,9 @@ class _CatalogEntityListScreenState extends State<CatalogEntityListScreen> {
       final notifier = _notifier(context);
       if (!_queriesEqual(parsed, notifier.query)) {
         notifier.applyQuery(parsed);
-      } else if (notifier.status == LoadStatus.idle) {
-        notifier.load();
+      } else if (notifier.status == LoadStatus.idle ||
+          notifier.status == LoadStatus.loading) {
+        notifier.load(force: notifier.status == LoadStatus.loading);
       }
     });
   }
@@ -138,11 +143,22 @@ class _CatalogEntityListScreenState extends State<CatalogEntityListScreen> {
     final notifier = _watchNotifier(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(_title)),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('$_basePath/new'),
-        child: const Icon(Icons.add),
+      appBar: AppBar(
+        title: Text(_title),
+        actions: [
+          IconButton(
+            tooltip: 'Обновить',
+            onPressed: () => notifier.load(force: true),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
+      floatingActionButton: canManageCatalog(context.watch<AuthNotifier>())
+          ? FloatingActionButton(
+              onPressed: () => context.push('$_basePath/new'),
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: Column(
         children: [
           Padding(
@@ -183,22 +199,25 @@ class _CatalogEntityListScreenState extends State<CatalogEntityListScreen> {
   }
 
   Widget _buildBody(NamedEntityListNotifier<dynamic> notifier) {
+    if (notifier.status == LoadStatus.error) {
+      return ListErrorView(
+        error: notifier.error,
+        onRetry: () => notifier.load(force: true),
+      );
+    }
     switch (notifier.status) {
       case LoadStatus.loading:
       case LoadStatus.idle:
         return const ListLoadingView();
       case LoadStatus.error:
-        return ListErrorView(
-          message: notifier.error ?? 'Ошибка загрузки',
-          onRetry: () => notifier.load(),
-        );
+        return const SizedBox.shrink();
       case LoadStatus.success:
         if (notifier.result.items.isEmpty) {
           return const ListEmptyView();
         }
         return LayoutBuilder(
           builder: (context, constraints) {
-            if (constraints.maxWidth < 600) {
+            if (constraints.maxWidth < LayoutBreakpoints.listTableMin) {
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 itemCount: notifier.result.items.length,
@@ -304,6 +323,9 @@ class _CatalogEntityListScreenState extends State<CatalogEntityListScreen> {
     try {
       await notifier.hardDelete(id);
     } on ReferenceInUseException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } on ConflictException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }

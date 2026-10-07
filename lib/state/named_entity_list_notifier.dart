@@ -1,12 +1,17 @@
-import 'package:flutter/foundation.dart' show ChangeNotifier;
+import 'package:dio/dio.dart' show CancelToken;
+import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint, kDebugMode;
 
+import '../core/api_exceptions.dart';
 import '../models/load_status.dart';
 import '../models/named_entity_query.dart';
 import '../models/page_result.dart';
 
 class NamedEntityListNotifier<T> extends ChangeNotifier {
   NamedEntityListNotifier({
-    required Future<PageResult<T>> Function(NamedEntityQuery query) finder,
+    required Future<PageResult<T>> Function(
+      NamedEntityQuery query, {
+      CancelToken? cancelToken,
+    }) finder,
     required Future<T?> Function(int id) detailLoader,
     required Future<void> Function(int id) softDeleter,
     required Future<void> Function(int id) hardDeleter,
@@ -19,7 +24,10 @@ class NamedEntityListNotifier<T> extends ChangeNotifier {
         _restorer = restorer,
         _bulkHardDeleter = bulkHardDeleter;
 
-  final Future<PageResult<T>> Function(NamedEntityQuery query) _finder;
+  final Future<PageResult<T>> Function(
+    NamedEntityQuery query, {
+    CancelToken? cancelToken,
+  }) _finder;
   final Future<T?> Function(int id) _detailLoader;
   final Future<void> Function(int id) _softDeleter;
   final Future<void> Function(int id) _hardDeleter;
@@ -29,7 +37,7 @@ class NamedEntityListNotifier<T> extends ChangeNotifier {
   NamedEntityQuery query = const NamedEntityQuery();
   PageResult<T> result = PageResult<T>.empty();
   LoadStatus status = LoadStatus.idle;
-  String? error;
+  Object? error;
   final Set<int> selected = {};
 
   T? detailItem;
@@ -38,17 +46,34 @@ class NamedEntityListNotifier<T> extends ChangeNotifier {
 
   bool get showDeleted => query.includeDeleted;
 
-  Future<void> load() async {
+  int _loadGeneration = 0;
+
+  Future<void> load({bool force = false}) async {
+    if (status == LoadStatus.loading && !force) return;
+
+    final generation = ++_loadGeneration;
     status = LoadStatus.loading;
     error = null;
     notifyListeners();
 
     try {
-      result = await _finder(query);
+      final page = await _finder(query).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw const NetworkException(
+          'Сервер не отвечает. Запустите .\\scripts\\run_api_server.ps1 (порт 8080).',
+        ),
+      );
+      if (generation != _loadGeneration) return;
+      result = page;
       status = LoadStatus.success;
-    } catch (e) {
+    } catch (e, st) {
+      if (generation != _loadGeneration) return;
       status = LoadStatus.error;
-      error = e.toString();
+      error = mapLoadError(e);
+      result = PageResult<T>.empty();
+      if (kDebugMode) {
+        debugPrint('[NamedEntityList] load failed: $error ($st)');
+      }
     }
     notifyListeners();
   }
@@ -56,7 +81,7 @@ class NamedEntityListNotifier<T> extends ChangeNotifier {
   Future<void> applyQuery(NamedEntityQuery next) async {
     query = next;
     selected.clear();
-    await load();
+    await load(force: true);
   }
 
   void toggleSelection(int id) {
@@ -83,7 +108,7 @@ class NamedEntityListNotifier<T> extends ChangeNotifier {
       }
     }
     selected.clear();
-    await load();
+    await load(force: true);
   }
 
   Future<void> restoreSelected() async {
@@ -91,22 +116,22 @@ class NamedEntityListNotifier<T> extends ChangeNotifier {
       await _restorer(id);
     }
     selected.clear();
-    await load();
+    await load(force: true);
   }
 
   Future<void> restore(int id) async {
     await _restorer(id);
-    await load();
+    await load(force: true);
   }
 
   Future<void> softDelete(int id) async {
     await _softDeleter(id);
-    await load();
+    await load(force: true);
   }
 
   Future<void> hardDelete(int id) async {
     await _hardDeleter(id);
-    await load();
+    await load(force: true);
   }
 
   Future<void> loadDetail(int id) async {

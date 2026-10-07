@@ -69,7 +69,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
         return const ListLoadingView();
       case LoadStatus.error:
         return ListErrorView(
-          message: notifier.detailError ?? 'Ошибка',
+          error: notifier.detailError ?? 'Ошибка',
           onRetry: () => notifier.loadDetail(widget.id),
         );
       case LoadStatus.success:

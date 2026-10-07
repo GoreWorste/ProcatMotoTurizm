@@ -1,9 +1,14 @@
+import 'package:dio/dio.dart';
+
 import '../models/brand.dart';
 import '../models/named_entity_query.dart';
 import '../models/page_result.dart';
 
 abstract class BrandRepository {
-  Future<PageResult<Brand>> find(NamedEntityQuery query);
+  Future<PageResult<Brand>> find(
+    NamedEntityQuery query, {
+    CancelToken? cancelToken,
+  });
 
   Future<List<Brand>> findAll({bool includeDeleted = false});
 

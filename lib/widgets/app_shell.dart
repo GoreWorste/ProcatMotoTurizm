@@ -1,59 +1,116 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../core/auth_permissions.dart';
+import '../core/config.dart';
+import '../core/layout_breakpoints.dart';
+import '../models/role.dart';
+import '../state/auth_notifier.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.child});
 
   final Widget child;
 
-  static const _paths = [
-    '/equipment',
-    '/clients',
-    '/categories',
-    '/brands',
-    '/tags',
-  ];
+  List<_NavItem> _items(AuthNotifier auth) {
+    final items = <_NavItem>[
+      const _NavItem('/equipment', Icons.precision_manufacturing_outlined, 'Оборудование'),
+      const _NavItem('/clients', Icons.people_outline, 'Клиенты'),
+    ];
+    if (!useApiBackend || auth.has(Role.manager)) {
+      items.addAll(const [
+        _NavItem('/categories', Icons.category_outlined, 'Категории'),
+        _NavItem('/brands', Icons.business_outlined, 'Бренды'),
+        _NavItem('/tags', Icons.label_outline, 'Теги'),
+      ]);
+    }
+    return items;
+  }
 
-  int _indexForLocation(String location) {
-    for (var i = 0; i < _paths.length; i++) {
-      if (location.startsWith(_paths[i])) return i;
+  int _indexForLocation(String location, List<_NavItem> items) {
+    for (var i = 0; i < items.length; i++) {
+      if (location.startsWith(items[i].path)) return i;
     }
     return 0;
   }
 
+  Widget? _userSidebar(BuildContext context, AuthNotifier auth) {
+    if (!useApiBackend || auth.user == null) return null;
+    return SizedBox(
+      width: 200,
+      child: Material(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                auth.user!.displayName,
+                style: Theme.of(context).textTheme.titleSmall,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                auth.user!.role.label,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              if (canManageUsers(auth))
+                TextButton.icon(
+                  onPressed: () => context.go('/admin/users'),
+                  icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
+                  label: const Text('Пользователи'),
+                ),
+              TextButton.icon(
+                onPressed: () => auth.logout(),
+                icon: const Icon(Icons.logout, size: 18),
+                label: const Text('Выйти'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthNotifier>();
+    final items = _items(auth);
     final location = GoRouterState.of(context).uri.path;
-    final index = _indexForLocation(location);
-    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final index = _indexForLocation(location, items);
+    final wide = MediaQuery.sizeOf(context).width >= LayoutBreakpoints.sideNavMin;
+    final userSidebar = _userSidebar(context, auth);
 
     if (!wide) {
       return Scaffold(
+        appBar: useApiBackend && auth.user != null
+            ? AppBar(
+                title: Text(auth.user!.displayName),
+                actions: [
+                  if (canManageUsers(auth))
+                    IconButton(
+                      tooltip: 'Пользователи',
+                      onPressed: () => context.go('/admin/users'),
+                      icon: const Icon(Icons.admin_panel_settings_outlined),
+                    ),
+                  IconButton(
+                    tooltip: 'Выйти',
+                    onPressed: auth.logout,
+                    icon: const Icon(Icons.logout),
+                  ),
+                ],
+              )
+            : null,
         body: child,
         bottomNavigationBar: NavigationBar(
-          selectedIndex: index,
-          onDestinationSelected: (i) => context.go(_paths[i]),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.precision_manufacturing_outlined),
-              label: 'Оборудование',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.people_outline),
-              label: 'Клиенты',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.category_outlined),
-              label: 'Категории',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.business_outlined),
-              label: 'Бренды',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.label_outline),
-              label: 'Теги',
-            ),
+          selectedIndex: index.clamp(0, items.length - 1),
+          onDestinationSelected: (i) => context.go(items[i].path),
+          destinations: [
+            for (final item in items)
+              NavigationDestination(icon: Icon(item.icon), label: item.label),
           ],
         ),
       );
@@ -61,35 +118,24 @@ class AppShell extends StatelessWidget {
 
     return Scaffold(
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (userSidebar != null) userSidebar,
           NavigationRail(
-            selectedIndex: index,
-            onDestinationSelected: (i) => context.go(_paths[i]),
-            extended: MediaQuery.sizeOf(context).width >= 1200,
-            labelType: MediaQuery.sizeOf(context).width >= 1200
+            selectedIndex: index.clamp(0, items.length - 1),
+            onDestinationSelected: (i) => context.go(items[i].path),
+            extended:
+                MediaQuery.sizeOf(context).width >= LayoutBreakpoints.railExtendedMin,
+            labelType: MediaQuery.sizeOf(context).width >=
+                    LayoutBreakpoints.railExtendedMin
                 ? NavigationRailLabelType.none
                 : NavigationRailLabelType.all,
-            destinations: const [
-              NavigationRailDestination(
-                icon: Icon(Icons.precision_manufacturing_outlined),
-                label: Text('Оборудование'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.people_outline),
-                label: Text('Клиенты'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.category_outlined),
-                label: Text('Категории'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.business_outlined),
-                label: Text('Бренды'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.label_outline),
-                label: Text('Теги'),
-              ),
+            destinations: [
+              for (final item in items)
+                NavigationRailDestination(
+                  icon: Icon(item.icon),
+                  label: Text(item.label),
+                ),
             ],
           ),
           const VerticalDivider(width: 1),
@@ -98,4 +144,12 @@ class AppShell extends StatelessWidget {
       ),
     );
   }
+}
+
+class _NavItem {
+  const _NavItem(this.path, this.icon, this.label);
+
+  final String path;
+  final IconData icon;
+  final String label;
 }

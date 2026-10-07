@@ -1,9 +1,14 @@
+import 'package:dio/dio.dart';
+
 import '../models/equipment.dart';
 import '../models/equipment_query.dart';
 import '../models/page_result.dart';
 
 abstract class EquipmentRepository {
-  Future<PageResult<Equipment>> find(EquipmentQuery query);
+  Future<PageResult<Equipment>> find(
+    EquipmentQuery query, {
+    CancelToken? cancelToken,
+  });
 
   Future<Equipment?> findById(int id);
 

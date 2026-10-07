@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../models/equipment.dart';
 import '../models/equipment_query.dart';
 import '../models/page_result.dart';
@@ -12,7 +14,10 @@ class PersistentEquipmentRepository implements EquipmentRepository {
   List<Equipment> get _items => _store.equipment;
 
   @override
-  Future<PageResult<Equipment>> find(EquipmentQuery query) async {
+  Future<PageResult<Equipment>> find(
+    EquipmentQuery query, {
+    CancelToken? cancelToken,
+  }) async {
     final searchTrim = query.search.trim();
     final delay = searchTrim == '__slow_load__'
         ? const Duration(seconds: 6)

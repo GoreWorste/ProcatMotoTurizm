@@ -1,9 +1,14 @@
+import 'package:dio/dio.dart';
+
 import '../models/client.dart';
 import '../models/client_query.dart';
 import '../models/page_result.dart';
 
 abstract class ClientRepository {
-  Future<PageResult<Client>> find(ClientQuery query);
+  Future<PageResult<Client>> find(
+    ClientQuery query, {
+    CancelToken? cancelToken,
+  });
 
   Future<Client?> findById(int id);
 

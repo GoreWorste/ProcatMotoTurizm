@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../core/api_exceptions.dart';
 import '../core/validators.dart';
 import '../models/client.dart';
 import '../models/rental_card.dart';
@@ -24,6 +25,7 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _dirty = false;
   bool _loading = true;
+  bool _saving = false;
 
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -83,6 +85,7 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
   Future<void> _submit() async {
     setState(() => _serverErrors = {});
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
 
     final issued = _parseDate(_cardIssuedController.text);
     if (issued == null) return;
@@ -105,15 +108,26 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
     );
 
     final repo = context.read<ClientRepository>();
-    if (widget.isEditing) {
-      await repo.update(client);
-    } else {
-      await repo.create(client);
-    }
-    await context.read<ClientListNotifier>().load();
-    if (mounted) {
-      setState(() => _dirty = false);
-      context.pop();
+    try {
+      if (widget.isEditing) {
+        await repo.update(client);
+      } else {
+        await repo.create(client);
+      }
+      await context.read<ClientListNotifier>().load();
+      if (mounted) {
+        setState(() => _dirty = false);
+        context.pop();
+      }
+    } on ValidationException catch (e) {
+      setState(() => _serverErrors = e.errors);
+      _formKey.currentState!.validate();
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -141,6 +155,7 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
       onDirty: _markDirty,
       submitLabel: widget.isEditing ? 'Сохранить' : 'Создать',
       onSubmit: _submit,
+      submitting: _saving,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -220,7 +235,16 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
                 (value == null || value.isEmpty) ? 'Выберите город' : null,
           ),
           const SizedBox(height: 24),
-          Text('Прокатный билет', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Прокатный билет (связь 1:1)',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Билет хранится внутри клиента — отдельного экрана для него нет.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
           const SizedBox(height: 12),
           TextFormField(
             controller: _cardNumberController,

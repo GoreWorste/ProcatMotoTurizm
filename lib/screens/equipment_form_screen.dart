@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../core/api_exceptions.dart';
 import '../core/validators.dart';
 import '../models/equipment.dart';
 import '../repositories/equipment_repository.dart';
@@ -25,6 +26,7 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _dirty = false;
   bool _loading = true;
+  bool _saving = false;
 
   final _nameController = TextEditingController();
   final _inventoryController = TextEditingController();
@@ -88,6 +90,7 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
   Future<void> _submit() async {
     setState(() => _serverErrors = {});
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
 
     final repo = context.read<EquipmentRepository>();
     final year = int.parse(_yearController.text.trim());
@@ -109,17 +112,32 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
       tagIds: _tagIds,
     );
 
-    if (widget.isEditing) {
-      await repo.update(equipment);
-    } else {
-      await repo.create(equipment);
-    }
-    if (!mounted) return;
-    await context.read<CatalogNotifier>().refresh();
-    await context.read<EquipmentListNotifier>().load();
-    if (mounted) {
-      setState(() => _dirty = false);
-      context.pop();
+    try {
+      if (widget.isEditing) {
+        await repo.update(equipment);
+      } else {
+        await repo.create(equipment);
+      }
+      if (!mounted) return;
+      context.read<CatalogNotifier>().invalidateCache();
+      await context.read<EquipmentListNotifier>().load();
+      if (mounted) {
+        setState(() => _dirty = false);
+        context.pop();
+      }
+    } on ValidationException catch (e) {
+      setState(() => _serverErrors = e.errors);
+      _formKey.currentState!.validate();
+    } on ConflictException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -156,6 +174,7 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
       onDirty: _markDirty,
       submitLabel: widget.isEditing ? 'Сохранить' : 'Создать',
       onSubmit: _submit,
+      submitting: _saving,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -195,11 +214,22 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
               return _serverErrors['inventoryNumber'];
             },
           ),
+          const SizedBox(height: 24),
+          Text(
+            'Связи с другими сущностями',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Категория и бренд — связь «многие к одному»; теги — «многие ко многим». '
+            'Список брендов сужается после выбора категории.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: 16),
           DropdownButtonFormField<int>(
             value: _categoryId,
             decoration: const InputDecoration(
-              labelText: 'Категория',
+              labelText: 'Категория (M2O)',
               border: OutlineInputBorder(),
             ),
             items: catalog.categories
@@ -219,7 +249,7 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
           DropdownButtonFormField<int>(
             value: _brandId,
             decoration: const InputDecoration(
-              labelText: 'Бренд',
+              labelText: 'Бренд (M2O)',
               border: OutlineInputBorder(),
             ),
             items: brandOptions
@@ -235,7 +265,7 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
           ),
           const SizedBox(height: 16),
           MultiIdChipsField(
-            label: 'Теги',
+            label: 'Теги (M2M)',
             selectedIds: _tagIds,
             options: catalog.tags.map((t) => (id: t.id, name: t.name)).toList(),
             onChanged: (next) {

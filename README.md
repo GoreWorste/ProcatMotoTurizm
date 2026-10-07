@@ -6,8 +6,21 @@
 
 ```bash
 flutter pub get
-flutter run -d chrome --web-port=5555
 ```
+
+**Запуск в браузере** (обязательно с локальными ресурсами, иначе при блокировке `gstatic.com` / `fonts.gstatic.com` будет белый экран и ошибки CanvasKit/Roboto):
+
+```powershell
+.\scripts\run_web.ps1
+```
+
+или:
+
+```bash
+flutter run -d chrome --web-port=5555 --no-web-resources-cdn
+```
+
+Сообщения `RemoteDebuggerExecutionContext` / `dartDevEmbedder` в консоли IDE при старте — шум отладчика, на работу приложения не влияют, если CanvasKit загрузился.
 
 Данные сохраняются в `localStorage` (ключи `equipment_v1`, `clients_v1`, `categories_v1`, `brands_v1`, `tags_v1`).
 
@@ -53,3 +66,58 @@ flutter run -d chrome --web-port=5555
 | Справочники (имя) | обязательно, длина 2–80 |
 
 Общие валидаторы: `lib/core/validators.dart`. Общая обёртка формы: `lib/widgets/form_scaffold.dart`, декларативные текстовые поля: `lib/widgets/declarative_form_fields.dart`.
+
+## Отчёт ПР3 (DOCX)
+
+После `flutter build web --no-web-resources-cdn`:
+
+```powershell
+.\tools\build_pr3_report.ps1
+```
+
+Результат: **`Otchet_Praktika_3_Formy_i_validaciya.docx`** в корне проекта.  
+Снимки: `screenshots_report/pr3/ui/`, фрагменты кода: `screenshots_report/pr3/code/`.  
+Репозиторий: [GoreWorste/ProcatMotoTurizm](https://github.com/GoreWorste/ProcatMotoTurizm/tree/dev).
+
+## Практическая работа 4 (REST API)
+
+1. Экспорт seed (при изменении данных): `dart run tools/export_api_seed.dart`
+2. Сервер: `.\scripts\run_api_server.ps1` (или `node api/mock-server.js --port 8080 --origin http://localhost:5555`)
+3. Проверка: http://localhost:8080/api/__health
+4. Клиент (порт **5555** для CORS): `.\scripts\run_web.ps1`
+5. Другой хост API: `--dart-define=API_BASE_URL=http://192.168.1.10:8080/api`
+6. Локальный режим ПР3 без сервера: `--dart-define=USE_API=false`
+7. Тесты репозитория: `flutter test test/api_equipment_repository_test.dart`
+8. Отчёт: `python tools\generate_pr4_report.py` → `Otchet_Praktika_4_REST_API.docx`
+
+Контракт: `api/КОНТРАКТ-API.md`.
+
+## Практическая работа 5 (авторизация и роли)
+
+1. Запустите API и клиент (`run_api_server.ps1`, `run_web.ps1`).
+2. Учётные записи: `admin` / `admin123`, `manager` / `manager123`, `viewer` / `viewer123`.
+3. Токены в DevTools → Application → Local storage → `flutter.auth_access_token`, `flutter.auth_refresh_token`.
+4. Короткий TTL access: `.\scripts\run_api_server_ttl.ps1` (`--ttl 60`).
+5. Отчёт: `python tools\generate_pr5_report.py` → `Otchet_Praktika_5_Avtorizaciya_Roli.docx`.
+
+## Практическая работа 6 (адаптив, сборка, публикация)
+
+**Точки перелома:** 360 / 768 / 1280 / 1920 px — `lib/core/layout_breakpoints.dart`.
+
+**Локальная release-сборка:**
+
+```powershell
+.\scripts\build_pages.ps1
+cd build\web
+python -m http.server 8000
+```
+
+Откройте http://localhost:8000/ProcatMotoTurizm/ (если сервер из корня `build/web` — http://localhost:8000).
+
+**GitHub Pages** (после push в `dev` и включения Pages → Source: **GitHub Actions**):
+
+https://goreworste.github.io/ProcatMotoTurizm/
+
+На Pages собирается с `USE_API=false` (локальные данные), без Node API. Для демо с API — локальный `run_web.ps1` + `run_api_server.ps1`.
+
+Workflow: `.github/workflows/deploy-pages.yml`.

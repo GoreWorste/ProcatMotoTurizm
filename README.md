@@ -104,20 +104,20 @@ flutter run -d chrome --web-port=5555 --no-web-resources-cdn
 
 **Точки перелома:** 360 / 768 / 1280 / 1920 px — `lib/core/layout_breakpoints.dart`.
 
-**Локальная release-сборка:**
+**Production-сборка (поддомен, `base-href /`):**
 
 ```powershell
-.\scripts\build_pages.ps1
-cd build\web
-python -m http.server 8000
+.\scripts\build_production.ps1
 ```
 
-Откройте http://localhost:8000/ProcatMotoTurizm/ (если сервер из корня `build/web` — http://localhost:8000).
+**Публикация на VPS** (`motoprocatflutter.romanovivv.ru` → A-запись на IP сервера):
 
-**GitHub Pages** (после push в `dev` и включения Pages → Source: **GitHub Actions**):
+```powershell
+.\scripts\deploy_to_vps.ps1 -User root -Host 213.171.28.69
+```
 
-https://goreworste.github.io/ProcatMotoTurizm/
+На сервере: nginx по примеру `deploy/nginx-motoprocatflutter.conf`, каталог `/var/www/motoprocatflutter`.
 
-На Pages собирается с `USE_API=false` (локальные данные), без Node API. Для демо с API — локальный `run_web.ps1` + `run_api_server.ps1`.
+**Отчёт ПР6:** `python tools\generate_pr6_report.py` → `Otchet_Praktika_6_Adaptiv_Sborka_Publikaciya.docx`
 
-Workflow: `.github/workflows/deploy-pages.yml`.
+Для API+авторизации (ПР4–ПР5) — локально `run_api_server.ps1` + `run_web.ps1`.

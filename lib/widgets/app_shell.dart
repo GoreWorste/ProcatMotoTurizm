@@ -35,42 +35,76 @@ class AppShell extends StatelessWidget {
     return 0;
   }
 
-  Widget? _userSidebar(BuildContext context, AuthNotifier auth) {
+  Widget? _railLeading(BuildContext context, AuthNotifier auth, bool extended) {
     if (!useApiBackend || auth.user == null) return null;
-    return SizedBox(
-      width: 200,
-      child: Material(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                auth.user!.displayName,
-                style: Theme.of(context).textTheme.titleSmall,
+    final user = auth.user!;
+    final theme = Theme.of(context);
+    final initial = user.displayName.trim().isEmpty
+        ? '?'
+        : user.displayName.trim()[0].toUpperCase();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: extended ? 18 : 16,
+            backgroundColor: theme.colorScheme.primaryContainer,
+            foregroundColor: theme.colorScheme.onPrimaryContainer,
+            child: Text(
+              initial,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (extended) ...[
+            const SizedBox(height: 6),
+            SizedBox(
+              width: 88,
+              child: Text(
+                user.displayName,
+                style: theme.textTheme.labelSmall,
+                textAlign: TextAlign.center,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                auth.user!.role.label,
-                style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Text(
+              user.role.label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outline,
+                fontSize: 11,
               ),
-              const SizedBox(height: 8),
-              if (canManageUsers(auth))
-                TextButton.icon(
-                  onPressed: () => context.go('/admin/users'),
-                  icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
-                  label: const Text('Пользователи'),
-                ),
-              TextButton.icon(
-                onPressed: () => auth.logout(),
-                icon: const Icon(Icons.logout, size: 18),
-                label: const Text('Выйти'),
-              ),
-            ],
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget? _railTrailing(BuildContext context, AuthNotifier auth) {
+    if (!useApiBackend || auth.user == null) return null;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (canManageUsers(auth))
+            _RailAction(
+              tooltip: 'Пользователи',
+              icon: Icons.admin_panel_settings_outlined,
+              onPressed: () => context.go('/admin/users'),
+            ),
+          _RailAction(
+            tooltip: 'Выйти',
+            icon: Icons.logout,
+            onPressed: auth.logout,
           ),
-        ),
+        ],
       ),
     );
   }
@@ -82,24 +116,41 @@ class AppShell extends StatelessWidget {
     final location = GoRouterState.of(context).uri.path;
     final index = _indexForLocation(location, items);
     final wide = MediaQuery.sizeOf(context).width >= LayoutBreakpoints.sideNavMin;
-    final userSidebar = _userSidebar(context, auth);
+    final extended =
+        MediaQuery.sizeOf(context).width >= LayoutBreakpoints.railExtendedMin;
 
     if (!wide) {
       return Scaffold(
         appBar: useApiBackend && auth.user != null
             ? AppBar(
-                title: Text(auth.user!.displayName),
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      auth.user!.displayName,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    Text(
+                      auth.user!.role.label,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+                toolbarHeight: 56,
                 actions: [
                   if (canManageUsers(auth))
                     IconButton(
                       tooltip: 'Пользователи',
+                      visualDensity: VisualDensity.compact,
                       onPressed: () => context.go('/admin/users'),
-                      icon: const Icon(Icons.admin_panel_settings_outlined),
+                      icon: const Icon(Icons.admin_panel_settings_outlined, size: 22),
                     ),
                   IconButton(
                     tooltip: 'Выйти',
+                    visualDensity: VisualDensity.compact,
                     onPressed: auth.logout,
-                    icon: const Icon(Icons.logout),
+                    icon: const Icon(Icons.logout, size: 22),
                   ),
                 ],
               )
@@ -120,20 +171,21 @@ class AppShell extends StatelessWidget {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (userSidebar != null) userSidebar,
           NavigationRail(
             selectedIndex: index.clamp(0, items.length - 1),
             onDestinationSelected: (i) => context.go(items[i].path),
-            extended:
-                MediaQuery.sizeOf(context).width >= LayoutBreakpoints.railExtendedMin,
-            labelType: MediaQuery.sizeOf(context).width >=
-                    LayoutBreakpoints.railExtendedMin
+            extended: extended,
+            minWidth: 72,
+            minExtendedWidth: 168,
+            labelType: extended
                 ? NavigationRailLabelType.none
                 : NavigationRailLabelType.all,
+            leading: _railLeading(context, auth, extended),
+            trailing: _railTrailing(context, auth),
             destinations: [
               for (final item in items)
                 NavigationRailDestination(
-                  icon: Icon(item.icon),
+                  icon: Icon(item.icon, size: 22),
                   label: Text(item.label),
                 ),
             ],
@@ -141,6 +193,33 @@ class AppShell extends StatelessWidget {
           const VerticalDivider(width: 1),
           Expanded(child: child),
         ],
+      ),
+    );
+  }
+}
+
+class _RailAction extends StatelessWidget {
+  const _RailAction({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.all(8),
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+      icon: Icon(icon, size: 20),
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     );
   }
